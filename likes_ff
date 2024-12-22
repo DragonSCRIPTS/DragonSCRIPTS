@@ -93,7 +93,7 @@ def obter_detalhes_usuario(nome_usuario):
 # Função que será chamada pelo bot no Telegram
 def criar_conta(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
-    if user_id == int('SEU_ID_DO_TELEGRAM_AQUI'):  # Valide se é o administrador
+    if user_id == int('7087444864'):  # Valide se é o administrador
         if context.args:
             nome_usuario = context.args[0]  # Nome fornecido pelo usuário
         else:
@@ -119,7 +119,7 @@ def monitorar_requisicoes(update: Update, context: CallbackContext):
 
 # Função para iniciar o bot do Telegram
 def main():
-    TOKEN = 'SEU_TOKEN_DO_BOT_AQUI'  # Token do seu bot do Telegram
+    TOKEN = '7407533619:AAGNcrfilhJTX0rwiT-zhdhpQuKwHrNSpmg'  # Token do seu bot do Telegram
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
