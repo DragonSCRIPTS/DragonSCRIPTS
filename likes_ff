@@ -1,0 +1,136 @@
+import requests
+import random
+import string
+import json
+import logging
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
+
+# Configuração do log para monitorar erros e atividades do bot
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Função para gerar um nome aleatório para a conta Guest
+def gerar_nome_usuario():
+    nome = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return nome
+
+# Função para gerar um IP aleatório
+def gerar_ip():
+    ip = f"{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}"
+    return ip
+
+# Função para autenticar com o servidor e criar uma conta guest
+def criar_conta_guest(nome_usuario):
+    ip_gerado = gerar_ip()  # Gerar IP aleatório para a requisição
+    url = 'https://100067.connect.garena.com/api/v1/create_account'  # URL para o servidor de autenticação
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+        'X-Forwarded-For': ip_gerado  # Adiciona o IP na requisição
+    }
+    payload = {
+        'username': nome_usuario,
+        'type': 'guest',  # Tipo de conta
+        'device': 'web',  # Exemplo de origem (pode variar conforme o tipo de dispositivo)
+    }
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()  # Levanta exceções para status de erro HTTP
+        if response.status_code == 200:
+            return f'Conta Guest criada com sucesso! Nome: {nome_usuario}, IP: {ip_gerado}'
+        else:
+            return f'Falha ao criar conta. Status Code: {response.status_code}. Resposta: {response.text}'
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro de requisição: {e}")
+        return f'Ocorreu um erro ao tentar criar a conta: {e}'
+
+# Função para autenticar o usuário no servidor
+def login_usuario(nome_usuario):
+    ip_gerado = gerar_ip()  # Gerar IP aleatório para a requisição
+    url = 'https://100067.connect.garena.com/api/v1/login'  # URL para login de conta
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+        'X-Forwarded-For': ip_gerado  # Adiciona o IP na requisição
+    }
+    payload = {
+        'username': nome_usuario,
+        'password': 'guest_password',  # Senha padrão (se necessário, pode ser alterado)
+    }
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()  # Levanta exceções para status de erro HTTP
+        if response.status_code == 200:
+            return f'Login realizado com sucesso! Bem-vindo, {nome_usuario}, IP: {ip_gerado}.'
+        else:
+            return f'Falha no login. Status Code: {response.status_code}. Resposta: {response.text}'
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro de login: {e}")
+        return f'Ocorreu um erro ao tentar fazer login: {e}'
+
+# Função para obter detalhes do jogador
+def obter_detalhes_usuario(nome_usuario):
+    ip_gerado = gerar_ip()  # Gerar IP aleatório para a requisição
+    url = f'https://100067.connect.garena.com/api/v1/user_details/{nome_usuario}'
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+        'X-Forwarded-For': ip_gerado  # Adiciona o IP na requisição
+    }
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        if response.status_code == 200:
+            user_data = response.json()
+            return f'Detalhes do usuário: {json.dumps(user_data, indent=4)}, IP: {ip_gerado}'
+        else:
+            return f'Erro ao obter detalhes. Status Code: {response.status_code}. Resposta: {response.text}'
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro ao obter detalhes: {e}")
+        return f'Ocorreu um erro ao tentar obter os detalhes do usuário: {e}'
+
+# Função que será chamada pelo bot no Telegram
+def criar_conta(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    if user_id == int('SEU_ID_DO_TELEGRAM_AQUI'):  # Valide se é o administrador
+        if context.args:
+            nome_usuario = context.args[0]  # Nome fornecido pelo usuário
+        else:
+            nome_usuario = gerar_nome_usuario()  # Gera nome aleatório
+        resultado_criacao = criar_conta_guest(nome_usuario)
+        resultado_login = login_usuario(nome_usuario)
+        detalhes_usuario = obter_detalhes_usuario(nome_usuario)
+        
+        update.message.reply_text(f'{resultado_criacao}\n{resultado_login}\n{detalhes_usuario}')
+    else:
+        update.message.reply_text("Você não tem permissão para usar este comando.")
+
+# Função para monitorar as requisições do servidor
+def monitorar_requisicoes(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    if user_id == int('SEU_ID_DO_TELEGRAM_AQUI'):
+        update.message.reply_text("Monitorando requisições do servidor...")
+        # Exemplo de log de atividade
+        logger.info('Monitoramento de requisições iniciado')
+        update.message.reply_text("Atividades do servidor em tempo real disponíveis.")
+    else:
+        update.message.reply_text("Você não tem permissão para monitorar as requisições.")
+
+# Função para iniciar o bot do Telegram
+def main():
+    TOKEN = 'SEU_TOKEN_DO_BOT_AQUI'  # Token do seu bot do Telegram
+    updater = Updater(TOKEN, use_context=True)
+    dispatcher = updater.dispatcher
+
+    # Comando de criação de conta
+    dispatcher.add_handler(CommandHandler('criar_conta', criar_conta, pass_args=True))
+    
+    # Comando para monitorar requisições
+    dispatcher.add_handler(CommandHandler('monitorar', monitorar_requisicoes))
+
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
